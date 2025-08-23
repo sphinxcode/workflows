@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__n8n-mcp__get_database_statistics",
+      "mcp__n8n-mcp__search_templates",
+      "mcp__n8n-mcp__list_ai_tools",
+      "WebSearch",
+      "Bash(git init:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
