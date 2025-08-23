@@ -9,10 +9,13 @@ This directory contains a comprehensive framework for developing n8n workflows u
 ```
 /n8n/
 ├── claude.md                         # Claude Code instructions for n8n development
-├── OPTIMIZED_WORKFLOW_INSTRUCTIONS.md # Enhanced workflow development methodology
+├── instructions.md                   # Enhanced workflow development methodology  
 ├── README.md                          # This file
 ├── /workflows/                        # Workflow JSON files organized by project
 ├── /docs/                            # Project documentation and tracking
+│   ├── context.md                    # Context window management guide
+│   ├── reference.md                  # Quick reference card
+│   ├── decision.md                   # New chat vs compact decision guide
 │   └── /diagrams/                    # Mermaid diagrams for visual architecture
 └── /templates/                        # Reusable workflow patterns
 ```
@@ -34,12 +37,33 @@ Primary instruction set for Claude Code when working with n8n workflows. Include
 - Version control protocols
 - n8n-MCP tool usage
 
-### 2. OPTIMIZED_WORKFLOW_INSTRUCTIONS.md
+### 2. instructions.md
 Strategic framework for workflow development with:
 - Improved chain of thought
 - Token optimization strategies
 - Emergency recovery procedures
 - Success metrics
+
+### 3. docs/context.md
+Context window management strategies:
+- Token usage monitoring
+- Phase transition strategies
+- Handoff protocols
+- Emergency procedures
+
+### 4. docs/reference.md
+Quick reference card for:
+- Token usage indicators
+- Magic phrases for context management
+- Phase sizing guide
+- Speed run commands
+
+### 5. docs/decision.md
+Decision guide for:
+- When to compact vs new chat
+- Real-world examples
+- Decision flowcharts
+- Advanced strategies
 
 ## 🎯 Workflow Development Process
 
@@ -79,6 +103,7 @@ Every workflow change follows:
 - Use environment variables: `{{$env.VAR_NAME}}`
 - Generic credential references
 - Secure GitHub commits
+- Token stored in `/home/dev/.github_token` (never in repo)
 
 ## 🚦 Getting Started
 
@@ -115,8 +140,12 @@ If something goes wrong:
 - **n8n-MCP**: ✅ Operational
 - **Directory Structure**: ✅ Created
 - **Documentation**: ✅ Complete
-- **GitHub Integration**: ⏳ Ready for configuration
+- **GitHub Integration**: ✅ Connected
 - **n8n Server**: ⏳ Ready for connection
+
+## 🔐 Security Note
+
+GitHub token is stored securely at `/home/dev/.github_token` and is never committed to the repository. Use `./push_to_github.sh` for secure pushing.
 
 ---
 
