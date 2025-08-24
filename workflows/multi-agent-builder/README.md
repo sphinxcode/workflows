@@ -10,22 +10,25 @@ An **autonomous workflow factory** that operates like a team of expert n8n devel
 
 ```mermaid
 graph LR
-    WRD[📋 Requirements] --> VIZ[👁️ Visualize]
+    WRD[📋 Requirements] --> SCHEMA[🔧 Parameter Schemas]
+    SCHEMA --> VIZ[👁️ Visualize]
     VIZ --> APP[✅ Approve]
     APP --> AGENTS[🤖×∞ Unlimited Agents]
-    AGENTS --> CONV[🔄 Converge]
-    CONV --> BUILD[🔨 Build]
-    BUILD --> DOCS[📚 Document]
+    AGENTS --> BUILD[🔨 Parallel Build]
+    BUILD --> CONV[🔄 Seamless Merge]
+    CONV --> DOCS[📚 Document]
     DOCS --> DEPLOY[🚀 Deploy]
     DEPLOY --> LEARN[🧠 Learn]
 ```
 
 ### Key Differentiators
-- **Unlimited Parallel Intelligence**: Not 5 agents, not 10 - unlimited based on complexity
-- **Complete Pipeline**: WRD → Mermaid → Telegram Approval → Execution → Documentation
-- **n8n-MCP Integration**: Each agent uses n8n-nodes-mcp to access comprehensive node intelligence
-- **Documentation Suite**: Ships with complete docs, not just code
-- **Continuous Learning**: Every workflow makes the system smarter
+- **Parameter-First Development**: Complete parameter schemas BEFORE agents start building
+- **Unlimited Parallel Intelligence**: Dynamic agent spawning based on complexity
+- **Zero-Conflict Integration**: Parameter schemas guarantee perfect phase stitching
+- **Complete Pipeline**: WRD → Schemas → Mermaid → Telegram → Parallel Execution → Documentation
+- **n8n-MCP Integration**: Each agent uses n8n-nodes-mcp with exact parameter blueprints
+- **Documentation Suite**: Generated from actual parameters, not templates
+- **Continuous Learning**: Pattern library grows with every successful workflow
 
 ## 📊 System Architecture
 
@@ -87,6 +90,8 @@ Each AI agent uses n8n-nodes-mcp as a subtool:
 multi-agent-builder/
 ├── 📄 README.md              # You are here
 ├── 📄 WRD.md                # Complete requirements document
+├── 📄 CHAIN-OF-THOUGHT.md   # Parameter-first development approach
+├── 📄 PARAMETER-SCHEMA.md   # Complete node parameter definitions
 ├── 📄 PROMPT.md             # Optimized AI chain of thought
 ├── 📄 ARCHITECTURE.md       # System design & diagrams
 ├── 📄 PIPELINE.md           # End-to-end workflow
@@ -94,6 +99,7 @@ multi-agent-builder/
 ├── 📄 IMPLEMENTATION.md     # Step-by-step instructions
 ├── 📄 SCHEMA.yaml           # Dynamic workflow schema
 └── 📁 workflows/            # Generated workflow outputs
+    ├── 📁 schemas/          # Parameter schemas
     ├── 📁 documentation/    # Complete doc suite
     ├── 📁 code/            # Workflow JSON
     ├── 📁 testing/         # Test cases

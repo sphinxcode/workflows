@@ -25,6 +25,35 @@ phases:
     function: "Delivery"
 ```
 
+### Parameter-First Schema (REQUIRED for Parallel)
+```yaml
+workflow:
+  name: "project-name"
+  approach: "parameter-first"
+  
+parameter_definitions:
+  webhook_trigger:
+    type: "n8n-nodes-base.webhook"
+    parameters:
+      path: "/endpoint"
+      method: "POST"
+      authentication: "headerAuth"
+      
+  ai_agent:
+    type: "@n8n/n8n-nodes-langchain.agent"
+    parameters:
+      promptType: "define"
+      hasOutputParser: true  # CRITICAL
+      systemMessage: "[role]"
+      
+  output_parser:
+    type: "@n8n/n8n-nodes-langchain.outputParserStructured"
+    parameters:
+      schemaType: "manual"
+      inputSchema: "[JSON schema]"
+      autoFix: true
+```
+
 ### Complete Schema (Parallel)
 ```yaml
 metadata:
