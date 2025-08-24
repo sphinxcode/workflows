@@ -1,0 +1,343 @@
+# n8n Workflow Schema Template
+# This template defines the complete structure before any development begins
+
+metadata:
+  name: "[workflow-name]"
+  description: "[business objective]"
+  version: "1.0.0"
+  author: "[developer]"
+  created: "[date]"
+  estimated_development_time: "[hours]"
+  parallel_agents: 4
+
+# Global workflow settings
+settings:
+  error_workflow: "[error-handler-workflow-id]"
+  timezone: "UTC"
+  save_data_on_error: "all"
+  save_data_on_success: "last_node"
+  save_execution_progress: true
+  timeout: 3600
+  retry:
+    attempts: 3
+    wait: 5000
+
+# Complete node registry - ALL nodes defined upfront
+node_registry:
+  # Phase 1: Triggers & Input
+  phase_1:
+    - id: "trigger_webhook"
+      type: "n8n-nodes-base.webhook"
+      typeVersion: 1.1
+      position: [250, 300]
+      parameters:
+        path: "webhook-path"
+        method: "POST"
+        responseMode: "onReceived"
+      outputs:
+        - name: "raw_input"
+          type: "object"
+          schema:
+            type: "object"
+            properties:
+              data: "any"
+              headers: "object"
+      dependencies: []
+      validation_required: true
+      
+    - id: "input_validator"
+      type: "n8n-nodes-base.if"
+      typeVersion: 2
+      position: [450, 300]
+      parameters:
+        conditions:
+          - field: "{{$json.data}}"
+            operation: "isNotEmpty"
+      inputs:
+        - source: "trigger_webhook"
+          data: "raw_input"
+      outputs:
+        - name: "valid_data"
+          type: "object"
+        - name: "invalid_data"
+          type: "object"
+      dependencies: ["trigger_webhook"]
+
+  # Phase 2: Processing
+  phase_2:
+    - id: "data_transformer"
+      type: "n8n-nodes-base.code"
+      typeVersion: 2
+      position: [650, 300]
+      parameters:
+        language: "javaScript"
+        code: |
+          // Transform logic here
+          return items;
+      inputs:
+        - source: "input_validator"
+          data: "valid_data"
+      outputs:
+        - name: "transformed_data"
+          type: "array"
+      dependencies: ["input_validator"]
+
+  # Phase 3: AI Integration
+  phase_3:
+    - id: "ai_agent"
+      type: "@n8n/n8n-nodes-langchain.agent"
+      typeVersion: 1
+      position: [850, 300]
+      parameters:
+        prompt: "Process this data"
+        model: "gpt-4"
+      inputs:
+        - source: "data_transformer"
+          data: "transformed_data"
+      outputs:
+        - name: "ai_response"
+          type: "object"
+      dependencies: ["data_transformer"]
+      ai_tools:
+        - "calculator"
+        - "code_executor"
+
+  # Phase 4: Integration & External Services
+  phase_4:
+    - id: "api_request"
+      type: "n8n-nodes-base.httpRequest"
+      typeVersion: 4
+      position: [1050, 300]
+      parameters:
+        method: "POST"
+        url: "https://api.example.com/endpoint"
+        authentication: "predefinedCredentialType"
+      inputs:
+        - source: "ai_agent"
+          data: "ai_response"
+      outputs:
+        - name: "api_result"
+          type: "object"
+      dependencies: ["ai_agent"]
+      credentials:
+        name: "api_credentials"
+        type: "httpBasicAuth"
+
+  # Phase 5: Output & Delivery
+  phase_5:
+    - id: "response_builder"
+      type: "n8n-nodes-base.set"
+      typeVersion: 3
+      position: [1250, 300]
+      parameters:
+        values:
+          - name: "status"
+            value: "success"
+          - name: "data"
+            value: "={{$json}}"
+      inputs:
+        - source: "api_request"
+          data: "api_result"
+      outputs:
+        - name: "final_response"
+          type: "object"
+      dependencies: ["api_request"]
+
+# Connection definitions
+connections:
+  - source:
+      node: "trigger_webhook"
+      output: "main"
+    target:
+      node: "input_validator"
+      input: "main"
+    
+  - source:
+      node: "input_validator"
+      output: "true"
+    target:
+      node: "data_transformer"
+      input: "main"
+    
+  - source:
+      node: "data_transformer"
+      output: "main"
+    target:
+      node: "ai_agent"
+      input: "main"
+    
+  - source:
+      node: "ai_agent"
+      output: "main"
+    target:
+      node: "api_request"
+      input: "main"
+    
+  - source:
+      node: "api_request"
+      output: "main"
+    target:
+      node: "response_builder"
+      input: "main"
+
+# Interface contracts between phases
+interfaces:
+  phase_1_to_2:
+    output:
+      format: "json"
+      required_fields: ["data", "validation_status"]
+      optional_fields: ["metadata"]
+    input:
+      expects: "validated_input"
+      
+  phase_2_to_3:
+    output:
+      format: "array"
+      structure: "transformed_objects"
+    input:
+      expects: "array_of_objects"
+      
+  phase_3_to_4:
+    output:
+      format: "ai_enriched_data"
+      includes: ["original", "ai_analysis"]
+    input:
+      expects: "structured_data"
+      
+  phase_4_to_5:
+    output:
+      format: "api_response"
+      status_codes: [200, 201, 400, 500]
+    input:
+      expects: "response_object"
+
+# Error handling definitions
+error_handling:
+  phase_1:
+    on_webhook_error:
+      action: "stop_and_error"
+      message: "Webhook initialization failed"
+      
+  phase_2:
+    on_validation_failure:
+      action: "route_to_error_handler"
+      error_output: "invalid_data"
+      
+  phase_3:
+    on_ai_error:
+      action: "retry_with_fallback"
+      fallback_model: "gpt-3.5-turbo"
+      max_retries: 3
+      
+  phase_4:
+    on_api_error:
+      action: "exponential_backoff"
+      initial_wait: 1000
+      max_wait: 30000
+      
+  phase_5:
+    on_output_error:
+      action: "log_and_continue"
+      log_level: "error"
+
+# Resource estimates
+resource_estimates:
+  total_nodes: 12
+  execution_time:
+    average: "30s"
+    maximum: "2m"
+  memory_usage: "moderate"
+  api_calls: 3
+  token_usage:
+    development: "~50K"
+    per_execution: "~2K"
+
+# Testing requirements
+testing:
+  unit_tests:
+    - test_webhook_reception
+    - test_validation_logic
+    - test_transformation
+    - test_ai_prompt
+    - test_api_integration
+    
+  integration_tests:
+    - test_full_workflow
+    - test_error_paths
+    - test_retry_logic
+    
+  performance_tests:
+    - load_test_100_requests
+    - stress_test_peak_load
+
+# Documentation requirements
+documentation:
+  required:
+    - workflow_overview.md
+    - api_endpoints.md
+    - error_codes.md
+    - deployment_guide.md
+  
+  phase_specific:
+    - phase_1_triggers.md
+    - phase_2_processing.md
+    - phase_3_ai_integration.md
+    - phase_4_external_services.md
+    - phase_5_output.md
+
+# Deployment configuration
+deployment:
+  environment_variables:
+    - WEBHOOK_PATH
+    - API_KEY
+    - AI_MODEL
+    - ERROR_WEBHOOK_URL
+    
+  credentials_required:
+    - http_basic_auth
+    - openai_api
+    - custom_api
+    
+  monitoring:
+    - execution_time
+    - error_rate
+    - api_usage
+    - token_consumption
+
+# Parallel development configuration
+parallel_config:
+  spawn_strategy: "phase_based"
+  max_concurrent_agents: 4
+  synchronization_points:
+    - after: "node_creation"
+    - after: "connection_setup"
+    - before: "final_stitching"
+  
+  agent_assignments:
+    agent_1: ["phase_1"]
+    agent_2: ["phase_2"]
+    agent_3: ["phase_3"]
+    agent_4: ["phase_4", "phase_5"]
+    
+  qa_protocol:
+    pre_build: ["schema_validation", "node_discovery"]
+    per_phase: ["node_validation", "connection_test"]
+    post_stitch: ["full_workflow_validation"]
+
+# Success criteria
+success_criteria:
+  development:
+    - all_nodes_created: true
+    - connections_validated: true
+    - interfaces_compatible: true
+    - error_handling_complete: true
+    
+  testing:
+    - unit_tests_pass: 100%
+    - integration_tests_pass: 100%
+    - performance_meets_targets: true
+    
+  deployment:
+    - github_pushed: true
+    - n8n_deployed: true
+    - monitoring_active: true

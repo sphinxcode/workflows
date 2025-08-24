@@ -1,11 +1,38 @@
 # n8n Workflow Development Framework with n8n-MCP
 
 ## Executive Summary
-This document defines the systematic approach for designing, building, validating, and deploying n8n workflows using n8n-MCP tools with phased implementation, version control, and quality assurance.
+This document defines two complementary approaches for designing, building, validating, and deploying n8n workflows using n8n-MCP tools: **Sequential Architect** for methodical phase-by-phase development and **Parallel Orchestrator** for schema-driven simultaneous phase execution.
 
-## Core Workflow Development Process
+## 🎭 Choose Your Development Persona
 
-### Phase 0: Discovery & Documentation
+### Quick Selection
+```bash
+# For workflows < 30 nodes or learning projects
+/workflow sequential  # or /ws
+
+# For workflows > 30 nodes or time-critical projects  
+/workflow parallel    # or /wp
+
+# Let me recommend based on your requirements
+/workflow auto
+```
+
+### Decision Matrix
+| Factor | Sequential | Parallel |
+|--------|:----------:|:--------:|
+| Workflow Size | < 30 nodes | > 30 nodes |
+| Timeline | Flexible | Urgent |
+| Specifications | Evolving | Complete |
+| Learning Goal | Yes | No |
+| Dependencies | Complex | Modular |
+
+---
+
+## 🐢 PERSONA 1: Sequential Architect (`/ws`)
+
+### Core Workflow Development Process
+
+#### Phase 0: Discovery & Documentation
 **ALWAYS start new workflow projects with:**
 ```
 1. mcp__n8n-mcp__tools_documentation() - Understand best practices
@@ -15,7 +42,7 @@ This document defines the systematic approach for designing, building, validatin
    - mermaid-diagram.md - Visual architecture
 ```
 
-### Phase 1: Requirements Analysis & Research
+#### Phase 1: Requirements Analysis & Research
 **Before any implementation:**
 1. **Deep Analysis**
    - Parse workflow requirement documents (WRD)
@@ -39,7 +66,7 @@ This document defines the systematic approach for designing, building, validatin
    - get_node_documentation(nodeType) for complex nodes
    ```
 
-### Phase 2: Architecture Design & Validation
+#### Phase 2: Architecture Design & Validation
 1. **Visual Architecture**
    - Create/review mermaid diagram
    - Map nodes to workflow phases
@@ -58,9 +85,9 @@ This document defines the systematic approach for designing, building, validatin
    - Validate against WRD (>80% accuracy required)
    - Get approval before proceeding
 
-### Phase 3: Phased Implementation
+#### Phase 3: Phased Implementation
 
-#### Implementation Rules
+##### Implementation Rules
 1. **Phase Boundaries**
    - Each phase is self-contained and testable
    - Phases connect via defined interfaces
@@ -88,9 +115,90 @@ This document defines the systematic approach for designing, building, validatin
    4. Update [workflowID].md with phase summary
    ```
 
-### Phase 4: Version Control & Deployment
+### Sequential Advantages
+- **Full Context**: Complete understanding at each step
+- **Immediate Feedback**: Issues caught and fixed instantly
+- **Flexible Adaptation**: Easy to pivot based on discoveries
+- **Lower Complexity**: No coordination overhead
+- **Better Learning**: Understand cause and effect clearly
 
-#### Git Workflow
+---
+
+## 🚀 PERSONA 2: Parallel Orchestrator (`/wp`)
+
+### Schema-First Parallel Development
+
+#### Phase 0: Complete Schema Definition
+**BEFORE any development begins:**
+```yaml
+workflow_schema:
+  metadata:
+    name: "workflow-name"
+    phases: 5
+    estimated_nodes: 45
+    
+  node_registry:
+    # ALL nodes defined upfront
+    phase_1:
+      - id: "webhook_1"
+        type: "n8n-nodes-base.webhook"
+        position: [250, 300]
+        outputs: ["raw_data"]
+        
+    phase_2:
+      - id: "processor_1"
+        type: "n8n-nodes-base.code"
+        inputs: ["webhook_1.raw_data"]
+        
+  connections:
+    # ALL connections mapped
+    
+  interfaces:
+    # Phase boundaries defined
+```
+
+#### Parallel Execution Strategy
+
+1. **Schema Validation**
+   ```javascript
+   // Validate ALL nodes exist before starting
+   await validateWorkflowSchema(schema);
+   await discoverAllNodes(schema.node_registry);
+   await estimateResources(schema);
+   ```
+
+2. **Spawn Configuration**
+   ```yaml
+   spawn_agents:
+     - agent_1: "Build Phase 1 - Triggers"
+     - agent_2: "Build Phase 2 - Processing"
+     - agent_3: "Build Phase 3 - AI Integration"
+     - agent_4: "Build Phase 4 - Output"
+   
+   synchronization:
+     - checkpoint_1: "After node creation"
+     - checkpoint_2: "Before stitching"
+   ```
+
+3. **Automated Stitching**
+   ```javascript
+   const phases = await collectPhaseOutputs();
+   const unified = await stitcher.stitch(phases);
+   await validator.validate(unified);
+   ```
+
+### Parallel Advantages
+- **Speed**: 60-70% faster than sequential
+- **Scalability**: Handle 100+ node workflows efficiently
+- **Consistency**: Uniform quality across all phases
+- **Resource Optimization**: Parallel token usage
+- **Early Error Detection**: Issues found across all phases quickly
+
+---
+
+## 🔄 Version Control & Deployment (Both Personas)
+
+### Git Workflow
 ```bash
 # Every workflow operation follows:
 1. Save JSON locally: /workflows/[project]/[workflow-name]-v[phase].json
@@ -102,7 +210,7 @@ This document defines the systematic approach for designing, building, validatin
 4. Create checkpoint documentation
 ```
 
-#### n8n Server Operations
+### n8n Server Operations
 ```javascript
 // Creation
 n8n_create_workflow(validatedWorkflow)
@@ -123,74 +231,50 @@ n8n_validate_workflow({id: workflowId})
 /home/dev/n8n/
 ├── workflows/
 │   ├── [project-name]/
-│   │   ├── [workflow-name]-v1.json
-│   │   ├── [workflow-name]-v2.json
-│   │   └── ...
+│   │   ├── schema.yaml           # (Parallel only)
+│   │   ├── phase-1.json          # (Both)
+│   │   ├── phase-2.json          # (Both)
+│   │   └── unified-workflow.json # (Final)
 ├── docs/
 │   ├── [projectName].md          # Implementation plan
 │   ├── [workflowID].md           # Phase tracking
 │   └── mermaid-diagrams/
 │       └── [project]-diagram.md
+├── templates/
+│   ├── workflow-schema-template.yaml
+│   └── phase-stitcher.js
 └── claude.md                      # This file
 ```
 
 ## Quality Assurance Framework
 
-### Pre-Build QA Checklist
+### Sequential QA (Continuous)
+- [ ] Test each node as built
+- [ ] Validate connections immediately
+- [ ] Run phase before proceeding
+- [ ] Document issues inline
+
+### Parallel QA (Phase-End)
+- [ ] Schema validation upfront
+- [ ] Node discovery for all phases
+- [ ] Parallel validation per agent
+- [ ] Unified workflow validation
+
+### Common QA Checklist
 - [ ] Web search for similar implementations completed
 - [ ] n8n templates researched and patterns identified
 - [ ] Essential nodes discovered and validated
 - [ ] Workflow connections validated against mermaid diagram
 - [ ] Accuracy score >80% against WRD
 
-### Node Configuration Standards
-```javascript
-{
-  "name": "descriptive-name",
-  "type": "verified-via-search",
-  "typeVersion": "latest-stable",
-  "position": [logical-x, logical-y],
-  "parameters": {
-    // Pre-validated configuration
-  },
-  "credentials": {
-    "name": "generic-credential-reference"
-  }
-}
-```
-
-### Environmental Variables
-- NEVER hardcode sensitive information
-- Use n8n expressions: `{{$env.API_KEY}}`
-- Document required environment variables
-
-## Workflow Patterns Library
-
-### Pattern 1: Error-Resilient API Integration
-```
-Trigger → Validate Input → Try API Call → 
-├─ Success: Process Data → Output
-└─ Failure: Retry Logic → Error Handler
-```
-
-### Pattern 2: Multi-Source Data Aggregation
-```
-Schedule Trigger → 
-├─ Source A: Fetch → Transform
-├─ Source B: Fetch → Transform
-└─ Merge → Deduplicate → Store
-```
-
-### Pattern 3: AI-Enhanced Processing
-```
-Form Input → Validate → AI Agent →
-├─ Tool 1: External API
-├─ Tool 2: Database Query
-└─ Memory: Context Storage
-→ Response Generation → Output
-```
-
 ## Command Quick Reference
+
+### Persona Selection
+```bash
+/workflow sequential --project "name"  # or /ws
+/workflow parallel --schema schema.yaml # or /wp
+/workflow auto                         # Recommend based on analysis
+```
 
 ### Discovery Commands
 ```javascript
@@ -213,15 +297,9 @@ mcp__n8n-mcp__get_template(templateId)
 mcp__n8n-mcp__list_node_templates({nodeTypes: ["n8n-nodes-base.httpRequest"]})
 ```
 
-## Phase Execution Protocol
+## Phase Execution Protocols
 
-### Starting a New Project
-1. Create `[projectName].md` with full implementation plan
-2. Initialize workflow in n8n
-3. Create initial `[workflowID].md`
-4. Commit to GitHub with project structure
-
-### Implementing Each Phase
+### Sequential Execution (`/ws`)
 ```
 1. REVIEW: Read previous phase documentation
 2. RESEARCH: Study patterns and best practices
@@ -233,29 +311,77 @@ mcp__n8n-mcp__list_node_templates({nodeTypes: ["n8n-nodes-base.httpRequest"]})
 8. DEPLOY: Update n8n server
 ```
 
-### Phase Transition Checklist
-- [ ] Current phase fully tested
-- [ ] Documentation updated
-- [ ] GitHub checkpoint created
-- [ ] n8n server synchronized
-- [ ] Ready for next phase briefing
+### Parallel Execution (`/wp`)
+```
+1. SCHEMA: Define complete workflow structure
+2. VALIDATE: Verify all nodes and connections
+3. SPAWN: Launch parallel agents
+4. SYNCHRONIZE: Coordinate at checkpoints
+5. STITCH: Combine phase outputs
+6. VALIDATE: Test unified workflow
+7. VERSION: Commit to GitHub
+8. DEPLOY: Update n8n server
+```
 
 ## Token Optimization Strategies
 
-1. **Use Diff Updates**: 80-90% token savings on modifications
-2. **Reference Existing Patterns**: Avoid recreating common structures
+### Sequential Optimization
+1. **Compact at 70%**: Preserve context efficiently
+2. **Reference Previous**: Don't repeat information
 3. **Incremental Building**: Small, focused phases
-4. **Cache Validation Results**: Reuse successful configurations
-5. **Template Reuse**: Leverage proven workflow templates
+
+### Parallel Optimization
+1. **Distributed Processing**: Agents use separate contexts
+2. **Schema Reuse**: Single source of truth
+3. **Batch Operations**: Combine similar tasks
+
+### Common Strategies
+1. **Use Diff Updates**: 80-90% token savings on modifications
+2. **Cache Validation Results**: Reuse successful configurations
+3. **Template Reuse**: Leverage proven workflow templates
+
+## When to Use Each Persona
+
+### Use Sequential (`/ws`) When:
+- Learning n8n or new domain
+- Requirements are evolving
+- Workflow has < 30 nodes
+- Complex interdependencies
+- Debugging existing workflows
+- Building proof of concepts
+
+### Use Parallel (`/wp`) When:
+- Complete specifications available
+- Workflow has > 30 nodes
+- Time-critical delivery
+- Modular architecture
+- Production deployment
+- Team collaboration needed
+
+## Hybrid Approach
+
+```bash
+# Start sequential for complex logic
+/ws init --phases 1-2
+
+# Switch to parallel for bulk processing
+/workflow switch parallel --from-phase 3
+/wp spawn --phases "3,4,5,6"
+
+# Return to sequential for integration
+/workflow switch sequential --phase 7
+/ws complete --validate
+```
 
 ## Critical Success Factors
 
-1. **Never Skip Research Phase** - Understanding patterns saves rework
-2. **Always Validate Before Building** - Catch errors early
-3. **Maintain Phase Discipline** - Don't exceed phase boundaries
-4. **Document Everything** - Future phases depend on clear records
-5. **Test Incrementally** - Each phase must work independently
-6. **Version Everything** - GitHub is your safety net
+1. **Choose Right Persona** - Match approach to project needs
+2. **Never Skip Research Phase** - Understanding patterns saves rework
+3. **Always Validate Before Building** - Catch errors early
+4. **Maintain Phase Discipline** - Don't exceed phase boundaries
+5. **Document Everything** - Future phases depend on clear records
+6. **Test Incrementally** - Each phase must work independently
+7. **Version Everything** - GitHub is your safety net
 
 ## Emergency Procedures
 
@@ -280,20 +406,22 @@ mcp__n8n-mcp__list_node_templates({nodeTypes: ["n8n-nodes-base.httpRequest"]})
 
 ## Project Handoff Template
 
-When receiving a new project, expect:
+When receiving a new project:
 1. **Workflow Requirement Document (WRD)** - Business requirements
 2. **Project Implementation Plan** - Technical breakdown
 3. **Mermaid Diagram** - Visual architecture
 
 Your response structure:
-1. Parse and understand all documents
-2. Create project structure
-3. Initialize tracking files
-4. Present phase 1 plan for approval
-5. Begin implementation upon confirmation
+1. Analyze project complexity
+2. Recommend persona (`/ws` or `/wp`)
+3. Create appropriate project structure
+4. Initialize tracking files
+5. Present implementation plan for approval
+6. Begin implementation upon confirmation
 
 ---
 
 *Last Updated: [Auto-update on save]*
-*Framework Version: 2.0*
+*Framework Version: 3.0*
+*Dual Persona System: Active*
 *n8n-MCP Integration: Active*
