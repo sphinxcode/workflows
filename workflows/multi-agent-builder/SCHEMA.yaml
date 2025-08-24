@@ -1,0 +1,898 @@
+# Multi-Agent Workflow Builder - Complete Schema Definition
+# This schema defines ALL nodes upfront for parallel development
+
+workflow:
+  name: "Multi-Agent Workflow Builder"
+  description: "Meta-workflow that creates other workflows using parallel AI agents and n8n-MCP"
+  version: "1.0.0"
+  total_nodes: 127
+  phases: 10
+  parallel_agents: 5
+
+# Complete Node Registry - All nodes defined upfront
+node_registry:
+  
+  # Phase 1: Input Processing (10 nodes)
+  phase_1:
+    - id: "webhook_trigger"
+      type: "n8n-nodes-base.webhook"
+      position: [250, 300]
+      parameters:
+        path: "workflow-builder"
+        method: "POST"
+        authentication: "headerAuth"
+      outputs: ["request_data"]
+    
+    - id: "validate_request"
+      type: "n8n-nodes-base.code"
+      position: [450, 300]
+      inputs: ["webhook_trigger"]
+      parameters:
+        language: "javascript"
+        code: "// Validate incoming request schema"
+      outputs: ["validated_request"]
+    
+    - id: "parse_requirements"
+      type: "n8n-nodes-base.code"
+      position: [650, 300]
+      inputs: ["validate_request"]
+      outputs: ["parsed_requirements"]
+    
+    - id: "priority_classifier"
+      type: "n8n-nodes-base.if"
+      position: [850, 300]
+      inputs: ["parse_requirements"]
+      outputs: ["high_priority", "normal_priority"]
+    
+    - id: "queue_manager"
+      type: "n8n-nodes-base.code"
+      position: [1050, 300]
+      inputs: ["priority_classifier"]
+      outputs: ["queued_request"]
+    
+    - id: "work_distributor"
+      type: "n8n-nodes-base.splitInBatches"
+      position: [1250, 300]
+      inputs: ["queue_manager"]
+      parameters:
+        batchSize: 5
+      outputs: ["distributed_work"]
+    
+    - id: "agent_initializer"
+      type: "n8n-nodes-base.code"
+      position: [1450, 300]
+      inputs: ["work_distributor"]
+      outputs: ["agent_configs"]
+    
+    - id: "context_builder"
+      type: "n8n-nodes-base.code"
+      position: [1650, 300]
+      inputs: ["agent_initializer"]
+      outputs: ["agent_contexts"]
+    
+    - id: "rate_limiter"
+      type: "n8n-nodes-base.wait"
+      position: [1850, 300]
+      inputs: ["context_builder"]
+      parameters:
+        amount: 100
+        unit: "milliseconds"
+      outputs: ["rate_limited"]
+    
+    - id: "distribution_splitter"
+      type: "n8n-nodes-base.splitInBatches"
+      position: [2050, 300]
+      inputs: ["rate_limiter"]
+      outputs: ["agent1_input", "agent2_input", "agent3_input", "agent4_input", "agent5_input"]
+
+  # Phase 2: Template Discovery Agent (15 nodes)
+  phase_2:
+    - id: "agent1_start"
+      type: "n8n-nodes-base.noOp"
+      position: [250, 600]
+      inputs: ["distribution_splitter.agent1_input"]
+      outputs: ["agent1_ready"]
+    
+    - id: "agent1_ai_init"
+      type: "@n8n/n8n-nodes-langchain.agent"
+      position: [450, 600]
+      inputs: ["agent1_start"]
+      parameters:
+        systemMessage: "You are a template discovery specialist"
+      outputs: ["agent1_ai_ready"]
+    
+    - id: "agent1_mcp_setup"
+      type: "n8n-nodes-mcp"
+      position: [650, 600]
+      inputs: ["agent1_ai_init"]
+      parameters:
+        url: "https://github.com/czlonkowski/n8n-mcp"
+        operation: "connect"
+      outputs: ["mcp1_connected"]
+    
+    - id: "agent1_list_templates"
+      type: "n8n-nodes-mcp"
+      position: [850, 600]
+      inputs: ["agent1_mcp_setup"]
+      parameters:
+        operation: "list_templates"
+        category: "{{ $json.category }}"
+      outputs: ["template_list"]
+    
+    - id: "agent1_analyze_templates"
+      type: "@n8n/n8n-nodes-langchain.agent"
+      position: [1050, 600]
+      inputs: ["agent1_list_templates"]
+      parameters:
+        prompt: "Analyze these templates for patterns"
+      outputs: ["template_analysis"]
+    
+    - id: "agent1_pattern_extractor"
+      type: "n8n-nodes-base.code"
+      position: [1250, 600]
+      inputs: ["agent1_analyze_templates"]
+      outputs: ["extracted_patterns"]
+    
+    - id: "agent1_relevance_scorer"
+      type: "n8n-nodes-base.code"
+      position: [1450, 600]
+      inputs: ["agent1_pattern_extractor"]
+      outputs: ["scored_templates"]
+    
+    - id: "agent1_template_selector"
+      type: "n8n-nodes-base.sort"
+      position: [1650, 600]
+      inputs: ["agent1_relevance_scorer"]
+      parameters:
+        sortBy: "score"
+        order: "descending"
+      outputs: ["selected_templates"]
+    
+    - id: "agent1_mcp_get_details"
+      type: "n8n-nodes-mcp"
+      position: [1850, 600]
+      inputs: ["agent1_template_selector"]
+      parameters:
+        operation: "get_template_details"
+      outputs: ["template_details"]
+    
+    - id: "agent1_json_builder"
+      type: "n8n-nodes-base.code"
+      position: [2050, 600]
+      inputs: ["agent1_mcp_get_details"]
+      outputs: ["template_json"]
+    
+    - id: "agent1_confidence_calc"
+      type: "n8n-nodes-base.code"
+      position: [2250, 600]
+      inputs: ["agent1_json_builder"]
+      outputs: ["confidence_score"]
+    
+    - id: "agent1_alternatives"
+      type: "n8n-nodes-base.code"
+      position: [2450, 600]
+      inputs: ["agent1_confidence_calc"]
+      outputs: ["alternative_templates"]
+    
+    - id: "agent1_output_formatter"
+      type: "n8n-nodes-base.code"
+      position: [2650, 600]
+      inputs: ["agent1_alternatives"]
+      outputs: ["formatted_output"]
+    
+    - id: "agent1_error_handler"
+      type: "n8n-nodes-base.errorTrigger"
+      position: [2850, 600]
+      outputs: ["agent1_errors"]
+    
+    - id: "agent1_complete"
+      type: "n8n-nodes-base.merge"
+      position: [3050, 600]
+      inputs: ["agent1_output_formatter", "agent1_error_handler"]
+      outputs: ["agent1_result"]
+
+  # Phase 3: Node Selection Agent (15 nodes)
+  phase_3:
+    - id: "agent2_start"
+      type: "n8n-nodes-base.noOp"
+      position: [250, 900]
+      inputs: ["distribution_splitter.agent2_input"]
+      outputs: ["agent2_ready"]
+    
+    - id: "agent2_ai_init"
+      type: "@n8n/n8n-nodes-langchain.agent"
+      position: [450, 900]
+      inputs: ["agent2_start"]
+      parameters:
+        systemMessage: "You are a node selection specialist"
+      outputs: ["agent2_ai_ready"]
+    
+    - id: "agent2_mcp_setup"
+      type: "n8n-nodes-mcp"
+      position: [650, 900]
+      inputs: ["agent2_ai_init"]
+      parameters:
+        url: "https://github.com/czlonkowski/n8n-mcp"
+        operation: "connect"
+      outputs: ["mcp2_connected"]
+    
+    - id: "agent2_search_nodes"
+      type: "n8n-nodes-mcp"
+      position: [850, 900]
+      inputs: ["agent2_mcp_setup"]
+      parameters:
+        operation: "search_nodes"
+        query: "{{ $json.functionality }}"
+      outputs: ["node_search_results"]
+    
+    - id: "agent2_analyze_nodes"
+      type: "@n8n/n8n-nodes-langchain.agent"
+      position: [1050, 900]
+      inputs: ["agent2_search_nodes"]
+      outputs: ["node_analysis"]
+    
+    - id: "agent2_compatibility_check"
+      type: "n8n-nodes-base.code"
+      position: [1250, 900]
+      inputs: ["agent2_analyze_nodes"]
+      outputs: ["compatible_nodes"]
+    
+    - id: "agent2_get_essentials"
+      type: "n8n-nodes-mcp"
+      position: [1450, 900]
+      inputs: ["agent2_compatibility_check"]
+      parameters:
+        operation: "get_node_essentials"
+      outputs: ["node_essentials"]
+    
+    - id: "agent2_performance_eval"
+      type: "n8n-nodes-base.code"
+      position: [1650, 900]
+      inputs: ["agent2_get_essentials"]
+      outputs: ["performance_scores"]
+    
+    - id: "agent2_node_selector"
+      type: "n8n-nodes-base.sort"
+      position: [1850, 900]
+      inputs: ["agent2_performance_eval"]
+      outputs: ["selected_nodes"]
+    
+    - id: "agent2_config_generator"
+      type: "n8n-nodes-base.code"
+      position: [2050, 900]
+      inputs: ["agent2_node_selector"]
+      outputs: ["node_configs"]
+    
+    - id: "agent2_json_builder"
+      type: "n8n-nodes-base.code"
+      position: [2250, 900]
+      inputs: ["agent2_config_generator"]
+      outputs: ["nodes_json"]
+    
+    - id: "agent2_alternatives"
+      type: "n8n-nodes-base.code"
+      position: [2450, 900]
+      inputs: ["agent2_json_builder"]
+      outputs: ["alternative_nodes"]
+    
+    - id: "agent2_output_formatter"
+      type: "n8n-nodes-base.code"
+      position: [2650, 900]
+      inputs: ["agent2_alternatives"]
+      outputs: ["formatted_output"]
+    
+    - id: "agent2_error_handler"
+      type: "n8n-nodes-base.errorTrigger"
+      position: [2850, 900]
+      outputs: ["agent2_errors"]
+    
+    - id: "agent2_complete"
+      type: "n8n-nodes-base.merge"
+      position: [3050, 900]
+      inputs: ["agent2_output_formatter", "agent2_error_handler"]
+      outputs: ["agent2_result"]
+
+  # Phase 4: Connection Mapping Agent (12 nodes)
+  phase_4:
+    - id: "agent3_start"
+      type: "n8n-nodes-base.noOp"
+      position: [250, 1200]
+      inputs: ["distribution_splitter.agent3_input"]
+      outputs: ["agent3_ready"]
+    
+    - id: "agent3_ai_init"
+      type: "@n8n/n8n-nodes-langchain.agent"
+      position: [450, 1200]
+      inputs: ["agent3_start"]
+      parameters:
+        systemMessage: "You are a connection mapping specialist"
+      outputs: ["agent3_ai_ready"]
+    
+    - id: "agent3_mcp_setup"
+      type: "n8n-nodes-mcp"
+      position: [650, 1200]
+      inputs: ["agent3_ai_init"]
+      parameters:
+        url: "https://github.com/czlonkowski/n8n-mcp"
+      outputs: ["mcp3_connected"]
+    
+    - id: "agent3_get_node_info"
+      type: "n8n-nodes-mcp"
+      position: [850, 1200]
+      inputs: ["agent3_mcp_setup"]
+      parameters:
+        operation: "get_node_info"
+      outputs: ["node_info"]
+    
+    - id: "agent3_analyze_io"
+      type: "n8n-nodes-base.code"
+      position: [1050, 1200]
+      inputs: ["agent3_get_node_info"]
+      outputs: ["io_analysis"]
+    
+    - id: "agent3_connection_logic"
+      type: "@n8n/n8n-nodes-langchain.agent"
+      position: [1250, 1200]
+      inputs: ["agent3_analyze_io"]
+      outputs: ["connection_plan"]
+    
+    - id: "agent3_data_mapper"
+      type: "n8n-nodes-base.code"
+      position: [1450, 1200]
+      inputs: ["agent3_connection_logic"]
+      outputs: ["data_mappings"]
+    
+    - id: "agent3_flow_optimizer"
+      type: "n8n-nodes-base.code"
+      position: [1650, 1200]
+      inputs: ["agent3_data_mapper"]
+      outputs: ["optimized_flow"]
+    
+    - id: "agent3_json_builder"
+      type: "n8n-nodes-base.code"
+      position: [1850, 1200]
+      inputs: ["agent3_flow_optimizer"]
+      outputs: ["connections_json"]
+    
+    - id: "agent3_output_formatter"
+      type: "n8n-nodes-base.code"
+      position: [2050, 1200]
+      inputs: ["agent3_json_builder"]
+      outputs: ["formatted_output"]
+    
+    - id: "agent3_error_handler"
+      type: "n8n-nodes-base.errorTrigger"
+      position: [2250, 1200]
+      outputs: ["agent3_errors"]
+    
+    - id: "agent3_complete"
+      type: "n8n-nodes-base.merge"
+      position: [2450, 1200]
+      inputs: ["agent3_output_formatter", "agent3_error_handler"]
+      outputs: ["agent3_result"]
+
+  # Phase 5: Validation Agent (10 nodes)
+  phase_5:
+    - id: "agent4_start"
+      type: "n8n-nodes-base.noOp"
+      position: [250, 1500]
+      inputs: ["distribution_splitter.agent4_input"]
+      outputs: ["agent4_ready"]
+    
+    - id: "agent4_ai_init"
+      type: "@n8n/n8n-nodes-langchain.agent"
+      position: [450, 1500]
+      inputs: ["agent4_start"]
+      parameters:
+        systemMessage: "You are a validation specialist"
+      outputs: ["agent4_ai_ready"]
+    
+    - id: "agent4_mcp_setup"
+      type: "n8n-nodes-mcp"
+      position: [650, 1500]
+      inputs: ["agent4_ai_init"]
+      outputs: ["mcp4_connected"]
+    
+    - id: "agent4_get_validation_rules"
+      type: "n8n-nodes-mcp"
+      position: [850, 1500]
+      inputs: ["agent4_mcp_setup"]
+      parameters:
+        operation: "get_node_essentials"
+      outputs: ["validation_rules"]
+    
+    - id: "agent4_syntax_check"
+      type: "n8n-nodes-base.code"
+      position: [1050, 1500]
+      inputs: ["agent4_get_validation_rules"]
+      outputs: ["syntax_validation"]
+    
+    - id: "agent4_compatibility_check"
+      type: "n8n-nodes-base.code"
+      position: [1250, 1500]
+      inputs: ["agent4_syntax_check"]
+      outputs: ["compatibility_report"]
+    
+    - id: "agent4_performance_check"
+      type: "n8n-nodes-base.code"
+      position: [1450, 1500]
+      inputs: ["agent4_compatibility_check"]
+      outputs: ["performance_report"]
+    
+    - id: "agent4_generate_report"
+      type: "n8n-nodes-base.code"
+      position: [1650, 1500]
+      inputs: ["agent4_performance_check"]
+      outputs: ["validation_report"]
+    
+    - id: "agent4_error_handler"
+      type: "n8n-nodes-base.errorTrigger"
+      position: [1850, 1500]
+      outputs: ["agent4_errors"]
+    
+    - id: "agent4_complete"
+      type: "n8n-nodes-base.merge"
+      position: [2050, 1500]
+      inputs: ["agent4_generate_report", "agent4_error_handler"]
+      outputs: ["agent4_result"]
+
+  # Phase 6: Documentation Agent (12 nodes)
+  phase_6:
+    - id: "agent5_start"
+      type: "n8n-nodes-base.noOp"
+      position: [250, 1800]
+      inputs: ["distribution_splitter.agent5_input"]
+      outputs: ["agent5_ready"]
+    
+    - id: "agent5_ai_init"
+      type: "@n8n/n8n-nodes-langchain.agent"
+      position: [450, 1800]
+      inputs: ["agent5_start"]
+      parameters:
+        systemMessage: "You are a documentation specialist"
+      outputs: ["agent5_ai_ready"]
+    
+    - id: "agent5_gather_context"
+      type: "n8n-nodes-base.code"
+      position: [650, 1800]
+      inputs: ["agent5_ai_init"]
+      outputs: ["doc_context"]
+    
+    - id: "agent5_generate_readme"
+      type: "@n8n/n8n-nodes-langchain.agent"
+      position: [850, 1800]
+      inputs: ["agent5_gather_context"]
+      outputs: ["readme_content"]
+    
+    - id: "agent5_generate_usage"
+      type: "@n8n/n8n-nodes-langchain.agent"
+      position: [1050, 1800]
+      inputs: ["agent5_generate_readme"]
+      outputs: ["usage_guide"]
+    
+    - id: "agent5_generate_api_docs"
+      type: "@n8n/n8n-nodes-langchain.agent"
+      position: [1250, 1800]
+      inputs: ["agent5_generate_usage"]
+      outputs: ["api_documentation"]
+    
+    - id: "agent5_generate_examples"
+      type: "n8n-nodes-base.code"
+      position: [1450, 1800]
+      inputs: ["agent5_generate_api_docs"]
+      outputs: ["code_examples"]
+    
+    - id: "agent5_markdown_formatter"
+      type: "n8n-nodes-base.code"
+      position: [1650, 1800]
+      inputs: ["agent5_generate_examples"]
+      outputs: ["formatted_docs"]
+    
+    - id: "agent5_output_builder"
+      type: "n8n-nodes-base.code"
+      position: [1850, 1800]
+      inputs: ["agent5_markdown_formatter"]
+      outputs: ["documentation_package"]
+    
+    - id: "agent5_error_handler"
+      type: "n8n-nodes-base.errorTrigger"
+      position: [2050, 1800]
+      outputs: ["agent5_errors"]
+    
+    - id: "agent5_complete"
+      type: "n8n-nodes-base.merge"
+      position: [2250, 1800]
+      inputs: ["agent5_output_builder", "agent5_error_handler"]
+      outputs: ["agent5_result"]
+
+  # Phase 7: Merge Intelligence Hub (20 nodes)
+  phase_7:
+    - id: "merge_collector"
+      type: "n8n-nodes-base.merge"
+      position: [250, 2100]
+      inputs: ["agent1_complete", "agent2_complete", "agent3_complete", "agent4_complete", "agent5_complete"]
+      mode: "combine"
+      outputs: ["all_agent_outputs"]
+    
+    - id: "merge_validator"
+      type: "n8n-nodes-base.code"
+      position: [450, 2100]
+      inputs: ["merge_collector"]
+      outputs: ["validated_outputs"]
+    
+    - id: "conflict_detector"
+      type: "n8n-nodes-base.code"
+      position: [650, 2100]
+      inputs: ["merge_validator"]
+      outputs: ["conflicts_found"]
+    
+    - id: "conflict_resolver"
+      type: "@n8n/n8n-nodes-langchain.agent"
+      position: [850, 2100]
+      inputs: ["conflict_detector"]
+      parameters:
+        systemMessage: "Resolve conflicts between agent outputs"
+      outputs: ["resolved_conflicts"]
+    
+    - id: "weighted_voter"
+      type: "n8n-nodes-base.code"
+      position: [1050, 2100]
+      inputs: ["conflict_resolver"]
+      outputs: ["voting_results"]
+    
+    - id: "consensus_builder"
+      type: "n8n-nodes-base.code"
+      position: [1250, 2100]
+      inputs: ["weighted_voter"]
+      outputs: ["consensus_data"]
+    
+    - id: "node_assembler"
+      type: "n8n-nodes-base.code"
+      position: [1450, 2100]
+      inputs: ["consensus_builder"]
+      outputs: ["assembled_nodes"]
+    
+    - id: "connection_assembler"
+      type: "n8n-nodes-base.code"
+      position: [1650, 2100]
+      inputs: ["node_assembler"]
+      outputs: ["assembled_connections"]
+    
+    - id: "settings_builder"
+      type: "n8n-nodes-base.code"
+      position: [1850, 2100]
+      inputs: ["connection_assembler"]
+      outputs: ["workflow_settings"]
+    
+    - id: "optimization_pass1"
+      type: "n8n-nodes-base.code"
+      position: [2050, 2100]
+      inputs: ["settings_builder"]
+      outputs: ["optimized_v1"]
+    
+    - id: "optimization_pass2"
+      type: "n8n-nodes-base.code"
+      position: [2250, 2100]
+      inputs: ["optimization_pass1"]
+      outputs: ["optimized_v2"]
+    
+    - id: "validation_pass"
+      type: "n8n-nodes-base.code"
+      position: [2450, 2100]
+      inputs: ["optimization_pass2"]
+      outputs: ["validated_workflow"]
+    
+    - id: "json_assembler"
+      type: "n8n-nodes-base.code"
+      position: [2650, 2100]
+      inputs: ["validation_pass"]
+      outputs: ["workflow_json"]
+    
+    - id: "metadata_builder"
+      type: "n8n-nodes-base.code"
+      position: [2850, 2100]
+      inputs: ["json_assembler"]
+      outputs: ["workflow_metadata"]
+    
+    - id: "quality_scorer"
+      type: "n8n-nodes-base.code"
+      position: [3050, 2100]
+      inputs: ["metadata_builder"]
+      outputs: ["quality_score"]
+    
+    - id: "confidence_calculator"
+      type: "n8n-nodes-base.code"
+      position: [3250, 2100]
+      inputs: ["quality_scorer"]
+      outputs: ["confidence_level"]
+    
+    - id: "final_validator"
+      type: "n8n-nodes-base.code"
+      position: [3450, 2100]
+      inputs: ["confidence_calculator"]
+      outputs: ["final_validation"]
+    
+    - id: "merge_output"
+      type: "n8n-nodes-base.code"
+      position: [3650, 2100]
+      inputs: ["final_validator"]
+      outputs: ["complete_workflow"]
+    
+    - id: "merge_error_handler"
+      type: "n8n-nodes-base.errorTrigger"
+      position: [3850, 2100]
+      outputs: ["merge_errors"]
+    
+    - id: "merge_complete"
+      type: "n8n-nodes-base.merge"
+      position: [4050, 2100]
+      inputs: ["merge_output", "merge_error_handler"]
+      outputs: ["merged_result"]
+
+  # Phase 8: Deployment Pipeline (15 nodes)
+  phase_8:
+    - id: "deploy_start"
+      type: "n8n-nodes-base.noOp"
+      position: [250, 2400]
+      inputs: ["merge_complete"]
+      outputs: ["deploy_ready"]
+    
+    - id: "final_structure_check"
+      type: "n8n-nodes-base.code"
+      position: [450, 2400]
+      inputs: ["deploy_start"]
+      outputs: ["structure_valid"]
+    
+    - id: "api_auth"
+      type: "n8n-nodes-base.httpRequest"
+      position: [650, 2400]
+      inputs: ["final_structure_check"]
+      parameters:
+        method: "POST"
+        url: "{{ $credentials.n8n_api_url }}/auth"
+      outputs: ["auth_token"]
+    
+    - id: "prepare_payload"
+      type: "n8n-nodes-base.code"
+      position: [850, 2400]
+      inputs: ["api_auth"]
+      outputs: ["deployment_payload"]
+    
+    - id: "create_workflow"
+      type: "n8n-nodes-base.httpRequest"
+      position: [1050, 2400]
+      inputs: ["prepare_payload"]
+      parameters:
+        method: "POST"
+        url: "{{ $credentials.n8n_api_url }}/workflows"
+      outputs: ["workflow_created"]
+    
+    - id: "get_workflow_id"
+      type: "n8n-nodes-base.code"
+      position: [1250, 2400]
+      inputs: ["create_workflow"]
+      outputs: ["workflow_id"]
+    
+    - id: "activate_workflow"
+      type: "n8n-nodes-base.httpRequest"
+      position: [1450, 2400]
+      inputs: ["get_workflow_id"]
+      parameters:
+        method: "PATCH"
+        url: "{{ $credentials.n8n_api_url }}/workflows/{{ $json.id }}/activate"
+      outputs: ["workflow_activated"]
+    
+    - id: "test_workflow"
+      type: "n8n-nodes-base.httpRequest"
+      position: [1650, 2400]
+      inputs: ["activate_workflow"]
+      parameters:
+        method: "POST"
+        url: "{{ $credentials.n8n_api_url }}/workflows/{{ $json.id }}/test"
+      outputs: ["test_results"]
+    
+    - id: "verify_deployment"
+      type: "n8n-nodes-base.code"
+      position: [1850, 2400]
+      inputs: ["test_workflow"]
+      outputs: ["deployment_verified"]
+    
+    - id: "deployment_monitor"
+      type: "n8n-nodes-base.wait"
+      position: [2050, 2400]
+      inputs: ["verify_deployment"]
+      parameters:
+        amount: 5
+        unit: "seconds"
+      outputs: ["monitoring_complete"]
+    
+    - id: "health_check"
+      type: "n8n-nodes-base.httpRequest"
+      position: [2250, 2400]
+      inputs: ["deployment_monitor"]
+      outputs: ["health_status"]
+    
+    - id: "deployment_report"
+      type: "n8n-nodes-base.code"
+      position: [2450, 2400]
+      inputs: ["health_check"]
+      outputs: ["deployment_summary"]
+    
+    - id: "deploy_error_handler"
+      type: "n8n-nodes-base.errorTrigger"
+      position: [2650, 2400]
+      outputs: ["deployment_errors"]
+    
+    - id: "rollback_handler"
+      type: "n8n-nodes-base.httpRequest"
+      position: [2850, 2400]
+      inputs: ["deploy_error_handler"]
+      parameters:
+        method: "DELETE"
+      outputs: ["rollback_complete"]
+    
+    - id: "deploy_complete"
+      type: "n8n-nodes-base.merge"
+      position: [3050, 2400]
+      inputs: ["deployment_report", "rollback_handler"]
+      outputs: ["deployment_result"]
+
+  # Phase 9: Error Handling & Recovery (10 nodes)
+  phase_9:
+    - id: "error_collector"
+      type: "n8n-nodes-base.merge"
+      position: [250, 2700]
+      inputs: ["agent1_errors", "agent2_errors", "agent3_errors", "agent4_errors", "agent5_errors", "merge_errors", "deployment_errors"]
+      outputs: ["all_errors"]
+    
+    - id: "error_classifier"
+      type: "n8n-nodes-base.code"
+      position: [450, 2700]
+      inputs: ["error_collector"]
+      outputs: ["classified_errors"]
+    
+    - id: "diagnostic_agent"
+      type: "@n8n/n8n-nodes-langchain.agent"
+      position: [650, 2700]
+      inputs: ["error_classifier"]
+      parameters:
+        systemMessage: "Diagnose workflow generation errors"
+      outputs: ["error_diagnosis"]
+    
+    - id: "correction_generator"
+      type: "n8n-nodes-base.code"
+      position: [850, 2700]
+      inputs: ["diagnostic_agent"]
+      outputs: ["corrections"]
+    
+    - id: "retry_decider"
+      type: "n8n-nodes-base.if"
+      position: [1050, 2700]
+      inputs: ["correction_generator"]
+      outputs: ["retry_yes", "retry_no"]
+    
+    - id: "retry_executor"
+      type: "n8n-nodes-base.code"
+      position: [1250, 2700]
+      inputs: ["retry_decider.retry_yes"]
+      outputs: ["retry_initiated"]
+    
+    - id: "fallback_strategy"
+      type: "n8n-nodes-base.code"
+      position: [1450, 2700]
+      inputs: ["retry_decider.retry_no"]
+      outputs: ["fallback_applied"]
+    
+    - id: "error_logger"
+      type: "n8n-nodes-base.httpRequest"
+      position: [1650, 2700]
+      inputs: ["retry_executor", "fallback_strategy"]
+      outputs: ["errors_logged"]
+    
+    - id: "recovery_report"
+      type: "n8n-nodes-base.code"
+      position: [1850, 2700]
+      inputs: ["error_logger"]
+      outputs: ["recovery_summary"]
+    
+    - id: "error_complete"
+      type: "n8n-nodes-base.noOp"
+      position: [2050, 2700]
+      inputs: ["recovery_report"]
+      outputs: ["error_handling_done"]
+
+  # Phase 10: Monitoring & Reporting (8 nodes)
+  phase_10:
+    - id: "result_collector"
+      type: "n8n-nodes-base.merge"
+      position: [250, 3000]
+      inputs: ["deploy_complete", "error_complete"]
+      outputs: ["all_results"]
+    
+    - id: "metrics_calculator"
+      type: "n8n-nodes-base.code"
+      position: [450, 3000]
+      inputs: ["result_collector"]
+      outputs: ["performance_metrics"]
+    
+    - id: "pattern_extractor"
+      type: "n8n-nodes-base.code"
+      position: [650, 3000]
+      inputs: ["metrics_calculator"]
+      outputs: ["extracted_patterns"]
+    
+    - id: "knowledge_updater"
+      type: "n8n-nodes-base.httpRequest"
+      position: [850, 3000]
+      inputs: ["pattern_extractor"]
+      outputs: ["knowledge_updated"]
+    
+    - id: "report_generator"
+      type: "n8n-nodes-base.code"
+      position: [1050, 3000]
+      inputs: ["knowledge_updater"]
+      outputs: ["final_report"]
+    
+    - id: "webhook_responder"
+      type: "n8n-nodes-base.respondToWebhook"
+      position: [1250, 3000]
+      inputs: ["report_generator"]
+      parameters:
+        respondWith: "json"
+      outputs: ["response_sent"]
+    
+    - id: "monitoring_dashboard"
+      type: "n8n-nodes-base.httpRequest"
+      position: [1450, 3000]
+      inputs: ["webhook_responder"]
+      outputs: ["dashboard_updated"]
+    
+    - id: "workflow_complete"
+      type: "n8n-nodes-base.noOp"
+      position: [1650, 3000]
+      inputs: ["monitoring_dashboard"]
+      outputs: ["all_done"]
+
+# Connection Matrix - Defines all inter-phase connections
+connections:
+  phase_transitions:
+    - from: "phase_1.distribution_splitter"
+      to: ["phase_2.agent1_start", "phase_3.agent2_start", "phase_4.agent3_start", "phase_5.agent4_start", "phase_6.agent5_start"]
+    - from: ["phase_2.agent1_complete", "phase_3.agent2_complete", "phase_4.agent3_complete", "phase_5.agent4_complete", "phase_6.agent5_complete"]
+      to: "phase_7.merge_collector"
+    - from: "phase_7.merge_complete"
+      to: "phase_8.deploy_start"
+    - from: "phase_8.deploy_complete"
+      to: "phase_10.result_collector"
+    - from: ["phase_2", "phase_3", "phase_4", "phase_5", "phase_6", "phase_7", "phase_8"]
+      to: "phase_9.error_collector"
+    - from: "phase_9.error_complete"
+      to: "phase_10.result_collector"
+
+# Validation Rules - Ensure schema integrity
+validation_rules:
+  - rule: "All phases must have at least one input and output"
+  - rule: "Error handlers must be present in each phase"
+  - rule: "MCP nodes must have valid operation parameters"
+  - rule: "AI agents must have system messages defined"
+  - rule: "Merge nodes must specify combine mode"
+  - rule: "HTTP requests must have authentication"
+  - rule: "Wait nodes must have defined intervals"
+  - rule: "Code nodes must have language specified"
+
+# Performance Targets
+performance_targets:
+  total_execution_time: "120 seconds"
+  parallel_execution_gain: "70%"
+  error_recovery_rate: "95%"
+  deployment_success_rate: "98%"
+  mcp_query_latency: "100ms"
+  agent_response_time: "5 seconds"
+
+# Resource Requirements
+resources:
+  memory: "2GB"
+  cpu_cores: 4
+  network_bandwidth: "10Mbps"
+  storage: "500MB"
+  concurrent_connections: 10
