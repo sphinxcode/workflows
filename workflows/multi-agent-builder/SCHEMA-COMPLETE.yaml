@@ -1,0 +1,1180 @@
+# Complete Multi-Agent Workflow Schema with Full Parameters
+# This schema includes ALL parameter definitions for parallel development
+# Each agent can work independently knowing exact parameter requirements
+
+metadata:
+  name: "Enterprise Multi-Agent Workflow Factory"
+  description: "Autonomous workflow generation system with unlimited parallel intelligence"
+  version: "2.0.0"
+  created: "2025-01-24"
+  estimated_nodes: 250
+  parallel_agents: "unlimited"
+  development_approach: "schema-first"
+
+# Global Settings with Full Parameters
+settings:
+  execution:
+    mode: "trigger"  # trigger | manual
+    saveDataOnError: "all"  # all | none | lastNode
+    saveDataOnSuccess: "all"
+    saveExecutionProgress: true
+    timeout: 7200  # 2 hours for complex workflows
+    retryOnFail: true
+    maxRetries: 3
+    waitBetweenRetries: 5000
+  
+  error_handling:
+    errorWorkflow: "error-handler-workflow-id"
+    continueOnFail: false
+    onError: "stopWorkflow"  # stopWorkflow | continueWorkflow | continueNode
+    
+  performance:
+    maxParallelism: 10
+    batchSize: 100
+    memoryLimit: "2GB"
+    
+  monitoring:
+    logLevel: "info"  # debug | info | warn | error
+    telemetry: true
+    metrics: true
+
+# Complete Node Registry with ALL Parameters
+node_registry:
+
+  # ==========================================
+  # PHASE 1: Input Processing & Requirements
+  # ==========================================
+  phase_1_input:
+    
+    # 1.1 Multi-Source Triggers
+    - id: "form_trigger"
+      type: "n8n-nodes-base.formTrigger"
+      typeVersion: 2
+      position: [250, 200]
+      parameters:
+        formTitle: "Workflow Requirements Submission"
+        formDescription: "Submit your workflow requirements"
+        formFields:
+          values:
+            - fieldLabel: "Project Name"
+              fieldType: "text"
+              requiredField: true
+              fieldOptions:
+                placeholder: "Enter project name"
+            - fieldLabel: "Business Objective"
+              fieldType: "textarea"
+              requiredField: true
+              fieldOptions:
+                rows: 5
+            - fieldLabel: "Complexity"
+              fieldType: "dropdown"
+              requiredField: true
+              fieldOptions:
+                values:
+                  - "Simple (10-30 nodes)"
+                  - "Medium (30-100 nodes)"
+                  - "Complex (100-300 nodes)"
+                  - "Enterprise (300+ nodes)"
+            - fieldLabel: "Upload WRD"
+              fieldType: "file"
+              acceptFileTypes: ".md,.pdf,.docx"
+        responseMode: "onReceived"
+        formPath: "workflow-requirements"
+        options:
+          respondWithOptions:
+            values:
+              responseHeaders:
+                - name: "Content-Type"
+                  value: "application/json"
+      outputs:
+        main:
+          - type: "object"
+            schema:
+              projectName: "string"
+              businessObjective: "string"
+              complexity: "string"
+              wrdFile: "binary"
+      
+    - id: "webhook_trigger"
+      type: "n8n-nodes-base.webhook"
+      typeVersion: 1.1
+      position: [250, 400]
+      parameters:
+        path: "workflow-factory"
+        method: "POST"
+        responseMode: "onReceived"
+        responseData: "allEntries"
+        responseBinaryPropertyName: "data"
+        responseHeaders:
+          values:
+            - name: "Content-Type"
+              value: "application/json"
+        options:
+          binaryData: true
+          rawBody: false
+          responseContentType: "application/json"
+      authentication:
+        type: "headerAuth"
+        properties:
+          headerAuth:
+            name: "X-API-Key"
+            value: "={{$credentials.apiKey}}"
+      outputs:
+        main:
+          - type: "object"
+            properties:
+              headers: "object"
+              params: "object"
+              query: "object"
+              body: "object"
+              binary: "object"
+    
+    # 1.2 Merge Triggers
+    - id: "merge_triggers"
+      type: "n8n-nodes-base.merge"
+      typeVersion: 3
+      position: [550, 300]
+      parameters:
+        mode: "combine"  # append | keepKeyMatches | mergeByIndex | mergeByKey | multiplex | chooseBranch | combine
+        options:
+          includeUnpaired: true
+          clashHandling:
+            values:
+              resolveClash: "preferInput2"
+      inputs:
+        - source: "form_trigger"
+        - source: "webhook_trigger"
+      outputs:
+        main:
+          - type: "object"
+            merged: true
+    
+    # 1.3 WRD Parser
+    - id: "wrd_parser"
+      type: "n8n-nodes-base.code"
+      typeVersion: 2
+      position: [750, 300]
+      parameters:
+        language: "javaScript"
+        mode: "runOnceForAllItems"
+        jsCode: |
+          // Parse WRD document and extract requirements
+          const parseWRD = (content) => {
+            const requirements = {
+              objectives: [],
+              constraints: [],
+              nodes: [],
+              integrations: [],
+              complexity: 'medium'
+            };
+            
+            // Parse markdown or text content
+            const lines = content.split('\n');
+            let currentSection = '';
+            
+            for (const line of lines) {
+              if (line.startsWith('## ')) {
+                currentSection = line.replace('## ', '').toLowerCase();
+              } else if (line.trim()) {
+                switch(currentSection) {
+                  case 'objectives':
+                    requirements.objectives.push(line.trim());
+                    break;
+                  case 'constraints':
+                    requirements.constraints.push(line.trim());
+                    break;
+                  case 'nodes':
+                    requirements.nodes.push(line.trim());
+                    break;
+                  case 'integrations':
+                    requirements.integrations.push(line.trim());
+                    break;
+                }
+              }
+            }
+            
+            // Assess complexity
+            const nodeCount = requirements.nodes.length;
+            if (nodeCount < 30) requirements.complexity = 'simple';
+            else if (nodeCount < 100) requirements.complexity = 'medium';
+            else if (nodeCount < 300) requirements.complexity = 'complex';
+            else requirements.complexity = 'enterprise';
+            
+            return requirements;
+          };
+          
+          return items.map(item => ({
+            json: {
+              ...item.json,
+              parsed: parseWRD(item.json.wrdContent || item.json.body || '')
+            }
+          }));
+      inputs:
+        - source: "merge_triggers"
+      outputs:
+        main:
+          - type: "object"
+            properties:
+              parsed:
+                objectives: "array"
+                constraints: "array"
+                nodes: "array"
+                integrations: "array"
+                complexity: "string"
+
+  # ==========================================
+  # PHASE 2: Visualization & Approval
+  # ==========================================
+  phase_2_visualization:
+    
+    # 2.1 Mermaid Generator
+    - id: "mermaid_generator"
+      type: "@n8n/n8n-nodes-langchain.agent"
+      typeVersion: 1.5
+      position: [250, 600]
+      parameters:
+        prompt: |
+          Generate a mermaid diagram for this workflow:
+          Objectives: {{$json.parsed.objectives}}
+          Nodes: {{$json.parsed.nodes}}
+          Integrations: {{$json.parsed.integrations}}
+        options:
+          systemMessage: "You are a technical diagram specialist. Generate clear mermaid diagrams."
+          temperature: 0.3
+          maxTokens: 2000
+          topP: 0.9
+          frequencyPenalty: 0
+          presencePenalty: 0
+          timeout: 30000
+          maxRetries: 2
+          outputParser:
+            type: "structuredOutput"
+            schema:
+              type: "object"
+              properties:
+                diagram:
+                  type: "string"
+                  description: "Mermaid diagram code"
+                summary:
+                  type: "string"
+                  description: "Executive summary"
+                nodeCount:
+                  type: "number"
+                  description: "Estimated node count"
+                complexity:
+                  type: "string"
+                  enum: ["simple", "medium", "complex", "enterprise"]
+      credentials:
+        name: "openai_api"
+        type: "openAiApi"
+      inputs:
+        - source: "wrd_parser"
+      outputs:
+        main:
+          - type: "object"
+            properties:
+              diagram: "string"
+              summary: "string"
+              nodeCount: "number"
+              complexity: "string"
+    
+    # 2.2 Telegram Sender
+    - id: "telegram_sender"
+      type: "n8n-nodes-base.telegram"
+      typeVersion: 1.2
+      position: [450, 600]
+      parameters:
+        operation: "sendMessage"
+        chatId: "={{$credentials.chatId}}"
+        text: |
+          🔔 *Workflow Approval Request*
+          
+          *Project:* {{$json.projectName}}
+          *Complexity:* {{$json.complexity}}
+          *Estimated Nodes:* {{$json.nodeCount}}
+          
+          *Summary:*
+          {{$json.summary}}
+          
+          *Diagram:*
+          ```mermaid
+          {{$json.diagram}}
+          ```
+          
+          Reply with:
+          ✅ APPROVE - to proceed
+          ❌ REJECT - to cancel
+          ✏️ MODIFY - to request changes
+        additionalFields:
+          parse_mode: "Markdown"
+          disable_notification: false
+          reply_markup:
+            inline_keyboard:
+              - - text: "✅ Approve"
+                  callback_data: "approve"
+                - text: "❌ Reject"
+                  callback_data: "reject"
+                - text: "✏️ Modify"
+                  callback_data: "modify"
+      credentials:
+        name: "telegram_bot"
+        type: "telegramApi"
+      inputs:
+        - source: "mermaid_generator"
+      outputs:
+        main:
+          - type: "object"
+            properties:
+              message_id: "number"
+              chat_id: "string"
+              sent: "boolean"
+    
+    # 2.3 Approval Wait
+    - id: "approval_wait"
+      type: "n8n-nodes-base.wait"
+      typeVersion: 1.1
+      position: [650, 600]
+      parameters:
+        resume: "webhook"
+        webhookSuffix: "approval"
+        options:
+          webhookMethod: "POST"
+          responseData: "allEntries"
+          timeout: 3600  # 1 hour timeout
+      inputs:
+        - source: "telegram_sender"
+      outputs:
+        main:
+          - type: "object"
+            properties:
+              approval: "string"
+              feedback: "string"
+              timestamp: "string"
+
+  # ==========================================
+  # PHASE 3: Parallel Intelligence Agents
+  # ==========================================
+  phase_3_intelligence:
+    
+    # 3.1 Agent Spawner
+    - id: "agent_spawner"
+      type: "n8n-nodes-base.splitInBatches"
+      typeVersion: 3
+      position: [250, 900]
+      parameters:
+        batchSize: 1
+        options:
+          reset: true
+          includeBinaries: false
+      inputs:
+        - source: "approval_wait"
+      outputs:
+        main:
+          - - type: "object"
+              description: "Business Intelligence Track"
+          - - type: "object"
+              description: "Technical Intelligence Track"
+          - - type: "object"
+              description: "Validation Intelligence Track"
+          - - type: "object"
+              description: "Documentation Intelligence Track"
+          - - type: "object"
+              description: "Dynamic Track N"
+    
+    # 3.2 Business Intelligence Agent
+    - id: "business_intelligence_agent"
+      type: "@n8n/n8n-nodes-langchain.agent"
+      typeVersion: 1.5
+      position: [500, 800]
+      parameters:
+        prompt: "Research business context for: {{$json.parsed.objectives}}"
+        options:
+          systemMessage: |
+            You are a business intelligence specialist. Research market patterns,
+            competitor analysis, ROI projections, and industry best practices.
+          temperature: 0.5
+          maxTokens: 4000
+          maxIterations: 10
+          returnIntermediateSteps: true
+      tools:
+        - id: "mcp_tool_business"
+          type: "n8n-nodes-mcp"
+          parameters:
+            url: "https://github.com/czlonkowski/n8n-mcp"
+            operation: "search_nodes"
+            headers:
+              Authorization: "Bearer {{$credentials.mcp_token}}"
+        - id: "web_search"
+          type: "@n8n/n8n-nodes-langchain.toolWebSearch"
+          parameters:
+            query: "{{$json.searchQuery}}"
+      credentials:
+        name: "openai_api"
+        type: "openAiApi"
+      inputs:
+        - source: "agent_spawner[0]"
+      outputs:
+        main:
+          - type: "object"
+            properties:
+              businessContext: "object"
+              marketAnalysis: "array"
+              roiProjection: "number"
+              competitiveAdvantage: "string"
+              confidence: "number"
+    
+    # 3.3 Technical Intelligence Agent
+    - id: "technical_intelligence_agent"
+      type: "@n8n/n8n-nodes-langchain.agent"
+      typeVersion: 1.5
+      position: [500, 1000]
+      parameters:
+        prompt: "Find optimal nodes and implementation for: {{$json.parsed.nodes}}"
+        options:
+          systemMessage: |
+            You are a technical implementation specialist. Use n8n-MCP to discover
+            optimal nodes, configurations, and integration patterns.
+          temperature: 0.3
+          maxTokens: 4000
+          maxIterations: 15
+      tools:
+        - id: "mcp_tool_technical"
+          type: "n8n-nodes-mcp"
+          parameters:
+            url: "https://github.com/czlonkowski/n8n-mcp"
+            operation: "HTTP"
+            method: "POST"
+            body:
+              operation: "search_nodes"
+              query: "{{$json.nodeQuery}}"
+            headers:
+              Content-Type: "application/json"
+        - id: "mcp_get_essentials"
+          type: "n8n-nodes-mcp"
+          parameters:
+            url: "https://github.com/czlonkowski/n8n-mcp"
+            operation: "HTTP"
+            method: "POST"
+            body:
+              operation: "get_node_essentials"
+              nodeType: "{{$json.nodeType}}"
+        - id: "mcp_list_templates"
+          type: "n8n-nodes-mcp"
+          parameters:
+            url: "https://github.com/czlonkowski/n8n-mcp"
+            operation: "HTTP"
+            method: "POST"
+            body:
+              operation: "list_templates"
+              category: "{{$json.category}}"
+      credentials:
+        name: "openai_api"
+        type: "openAiApi"
+      inputs:
+        - source: "agent_spawner[1]"
+      outputs:
+        main:
+          - type: "object"
+            properties:
+              selectedNodes: "array"
+              nodeConfigurations: "object"
+              connections: "array"
+              alternatives: "array"
+              confidence: "number"
+    
+    # 3.4 Validation Intelligence Agent
+    - id: "validation_intelligence_agent"
+      type: "@n8n/n8n-nodes-langchain.agent"
+      typeVersion: 1.5
+      position: [500, 1200]
+      parameters:
+        prompt: "Validate workflow structure and security"
+        options:
+          systemMessage: |
+            You are a validation specialist. Check syntax, security, compliance,
+            and performance characteristics. Ensure production readiness.
+          temperature: 0.1
+          maxTokens: 3000
+          maxIterations: 8
+      tools:
+        - id: "mcp_validate"
+          type: "n8n-nodes-mcp"
+          parameters:
+            url: "https://github.com/czlonkowski/n8n-mcp"
+            operation: "HTTP"
+            method: "POST"
+            body:
+              operation: "validate_workflow"
+              workflow: "{{$json.workflow}}"
+        - id: "security_scanner"
+          type: "@n8n/n8n-nodes-langchain.toolCode"
+          parameters:
+            language: "python"
+            code: |
+              # Security validation logic
+              import json
+              def validate_security(workflow):
+                  issues = []
+                  # Check for hardcoded credentials
+                  # Check for exposed endpoints
+                  # Check for data leakage
+                  return issues
+      credentials:
+        name: "openai_api"
+        type: "openAiApi"
+      inputs:
+        - source: "agent_spawner[2]"
+      outputs:
+        main:
+          - type: "object"
+            properties:
+              validationReport: "object"
+              securityScore: "number"
+              complianceStatus: "boolean"
+              issues: "array"
+              fixes: "array"
+    
+    # 3.5 Documentation Intelligence Agent
+    - id: "documentation_intelligence_agent"
+      type: "@n8n/n8n-nodes-langchain.agent"
+      typeVersion: 1.5
+      position: [500, 1400]
+      parameters:
+        prompt: "Generate comprehensive documentation suite"
+        options:
+          systemMessage: |
+            You are a documentation specialist. Create README, API docs,
+            troubleshooting guides, video scripts, and user manuals.
+          temperature: 0.7
+          maxTokens: 8000
+          maxIterations: 5
+          outputParser:
+            type: "structuredOutput"
+            schema:
+              type: "object"
+              properties:
+                readme:
+                  type: "string"
+                  description: "README.md content"
+                implementation:
+                  type: "string"
+                  description: "Implementation guide"
+                api:
+                  type: "string"
+                  description: "API documentation"
+                troubleshooting:
+                  type: "string"
+                  description: "Troubleshooting guide"
+                videoScript:
+                  type: "string"
+                  description: "Tutorial video script"
+                faq:
+                  type: "array"
+                  items:
+                    type: "object"
+                    properties:
+                      question: "string"
+                      answer: "string"
+      credentials:
+        name: "openai_api"
+        type: "openAiApi"
+      inputs:
+        - source: "agent_spawner[3]"
+      outputs:
+        main:
+          - type: "object"
+            properties:
+              documentation: "object"
+              completeness: "number"
+              languages: "array"
+
+  # ==========================================
+  # PHASE 4: Convergence & Assembly
+  # ==========================================
+  phase_4_convergence:
+    
+    # 4.1 Merge Intelligence Hub
+    - id: "merge_intelligence"
+      type: "n8n-nodes-base.merge"
+      typeVersion: 3
+      position: [250, 1600]
+      parameters:
+        mode: "combine"
+        options:
+          includeUnpaired: false
+          clashHandling:
+            values:
+              resolveClash: "addSuffix"
+              suffix: "_{{$itemIndex}}"
+      inputs:
+        - source: "business_intelligence_agent"
+        - source: "technical_intelligence_agent"
+        - source: "validation_intelligence_agent"
+        - source: "documentation_intelligence_agent"
+      outputs:
+        main:
+          - type: "object"
+            properties:
+              mergedIntelligence: "object"
+              conflictCount: "number"
+    
+    # 4.2 Conflict Resolution
+    - id: "conflict_resolver"
+      type: "n8n-nodes-base.code"
+      typeVersion: 2
+      position: [450, 1600]
+      parameters:
+        language: "javaScript"
+        jsCode: |
+          // Weighted voting conflict resolution
+          const resolveConflicts = (agents) => {
+            const weights = {
+              business: 0.2,
+              technical: 0.35,
+              validation: 0.25,
+              documentation: 0.2
+            };
+            
+            const consensus = {};
+            let totalConfidence = 0;
+            
+            // Calculate weighted consensus
+            for (const [agent, data] of Object.entries(agents)) {
+              const weight = weights[agent] || 0.25;
+              const confidence = data.confidence || 0.5;
+              totalConfidence += confidence * weight;
+              
+              // Merge recommendations
+              for (const [key, value] of Object.entries(data)) {
+                if (!consensus[key]) consensus[key] = {};
+                consensus[key][agent] = {
+                  value,
+                  weight: confidence * weight
+                };
+              }
+            }
+            
+            // Resolve to final values
+            const resolved = {};
+            for (const [key, votes] of Object.entries(consensus)) {
+              // Select highest weighted vote
+              let maxWeight = 0;
+              let selectedValue = null;
+              
+              for (const vote of Object.values(votes)) {
+                if (vote.weight > maxWeight) {
+                  maxWeight = vote.weight;
+                  selectedValue = vote.value;
+                }
+              }
+              
+              resolved[key] = selectedValue;
+            }
+            
+            return {
+              resolved,
+              confidence: totalConfidence,
+              consensusLevel: totalConfidence > 0.8 ? 'high' : totalConfidence > 0.6 ? 'medium' : 'low'
+            };
+          };
+          
+          return [{
+            json: resolveConflicts($input.all())
+          }];
+      inputs:
+        - source: "merge_intelligence"
+      outputs:
+        main:
+          - type: "object"
+            properties:
+              resolved: "object"
+              confidence: "number"
+              consensusLevel: "string"
+    
+    # 4.3 Workflow Assembler
+    - id: "workflow_assembler"
+      type: "n8n-nodes-base.code"
+      typeVersion: 2
+      position: [650, 1600]
+      parameters:
+        language: "javaScript"
+        jsCode: |
+          // Assemble complete workflow JSON
+          const assembleWorkflow = (intelligence) => {
+            const workflow = {
+              name: intelligence.projectName || 'Generated Workflow',
+              nodes: [],
+              connections: {},
+              settings: {
+                saveDataErrorExecution: 'all',
+                saveDataSuccessExecution: 'all',
+                saveExecutionProgress: true,
+                saveManualExecutions: true,
+                callerPolicy: 'workflowsFromSameOwner'
+              },
+              staticData: null,
+              tags: [],
+              triggerCount: 0,
+              updatedAt: new Date().toISOString(),
+              versionId: null
+            };
+            
+            // Add nodes from technical intelligence
+            const nodes = intelligence.resolved.selectedNodes || [];
+            nodes.forEach((node, index) => {
+              workflow.nodes.push({
+                id: node.id,
+                name: node.name,
+                type: node.type,
+                typeVersion: node.typeVersion || 1,
+                position: [250 + (index % 5) * 200, 300 + Math.floor(index / 5) * 150],
+                parameters: node.parameters || {},
+                credentials: node.credentials || {},
+                disabled: false,
+                continueOnFail: false
+              });
+            });
+            
+            // Add connections
+            const connections = intelligence.resolved.connections || [];
+            connections.forEach(conn => {
+              if (!workflow.connections[conn.source]) {
+                workflow.connections[conn.source] = {};
+              }
+              if (!workflow.connections[conn.source].main) {
+                workflow.connections[conn.source].main = [[]];
+              }
+              workflow.connections[conn.source].main[0].push({
+                node: conn.target,
+                type: 'main',
+                index: 0
+              });
+            });
+            
+            return workflow;
+          };
+          
+          return [{
+            json: assembleWorkflow($input.first().json)
+          }];
+      inputs:
+        - source: "conflict_resolver"
+      outputs:
+        main:
+          - type: "object"
+            properties:
+              workflow: "object"
+              nodeCount: "number"
+              connectionCount: "number"
+
+  # ==========================================
+  # PHASE 5: Documentation Generation
+  # ==========================================
+  phase_5_documentation:
+    
+    # 5.1 Documentation Generator
+    - id: "documentation_generator"
+      type: "n8n-nodes-base.code"
+      typeVersion: 2
+      position: [250, 1900]
+      parameters:
+        language: "javaScript"
+        jsCode: |
+          // Generate complete documentation suite
+          const generateDocs = (workflow, intelligence) => {
+            const docs = {
+              'README.md': generateReadme(workflow, intelligence),
+              'IMPLEMENTATION.md': generateImplementation(workflow),
+              'API.md': generateAPI(workflow),
+              'TROUBLESHOOTING.md': generateTroubleshooting(workflow),
+              'workflow.json': JSON.stringify(workflow, null, 2),
+              'schema.yaml': generateSchema(workflow),
+              'test-cases.json': generateTestCases(workflow),
+              'metrics.json': generateMetrics(workflow)
+            };
+            
+            return docs;
+          };
+          
+          // Individual document generators
+          const generateReadme = (workflow, intelligence) => {
+            return `# ${workflow.name}
+            
+## Overview
+${intelligence.resolved.summary || 'Automated workflow generated by Multi-Agent Factory'}
+
+## Features
+${(intelligence.resolved.features || []).map(f => `- ${f}`).join('\n')}
+
+## Quick Start
+1. Import workflow.json into n8n
+2. Configure credentials
+3. Activate workflow
+4. Test with sample data
+
+## Requirements
+- n8n version: 1.0.0+
+- Nodes: ${workflow.nodes.length}
+- External services: ${intelligence.resolved.integrations?.join(', ') || 'None'}
+
+## Performance
+- Execution time: ~${intelligence.resolved.executionTime || '30s'}
+- Memory usage: ${intelligence.resolved.memoryUsage || 'Moderate'}
+- API calls: ${intelligence.resolved.apiCalls || 'Variable'}
+
+---
+Generated by Multi-Agent Workflow Factory v2.0`;
+          };
+          
+          const generateImplementation = (workflow) => {
+            // Implementation guide generation
+            return '# Implementation Guide\n...';
+          };
+          
+          const generateAPI = (workflow) => {
+            // API documentation generation
+            return '# API Documentation\n...';
+          };
+          
+          const generateTroubleshooting = (workflow) => {
+            // Troubleshooting guide generation
+            return '# Troubleshooting Guide\n...';
+          };
+          
+          const generateSchema = (workflow) => {
+            // YAML schema generation
+            return 'metadata:\n  name: ...\n';
+          };
+          
+          const generateTestCases = (workflow) => {
+            // Test cases generation
+            return JSON.stringify({tests: []}, null, 2);
+          };
+          
+          const generateMetrics = (workflow) => {
+            // Metrics baseline generation
+            return JSON.stringify({metrics: {}}, null, 2);
+          };
+          
+          return [{
+            json: {
+              documents: generateDocs($input.first().json.workflow, $input.first().json),
+              fileCount: 8,
+              totalSize: '~50KB'
+            }
+          }];
+      inputs:
+        - source: "workflow_assembler"
+      outputs:
+        main:
+          - type: "object"
+            properties:
+              documents: "object"
+              fileCount: "number"
+              totalSize: "string"
+
+  # ==========================================
+  # PHASE 6: Deployment & Monitoring
+  # ==========================================
+  phase_6_deployment:
+    
+    # 6.1 n8n API Deployment
+    - id: "n8n_deployer"
+      type: "n8n-nodes-base.httpRequest"
+      typeVersion: 4.2
+      position: [250, 2200]
+      parameters:
+        method: "POST"
+        url: "={{$credentials.n8nApiUrl}}/api/v1/workflows"
+        authentication: "genericCredentialType"
+        genericAuthType: "httpHeaderAuth"
+        sendHeaders: true
+        headerParameters:
+          parameters:
+            - name: "X-N8N-API-KEY"
+              value: "={{$credentials.n8nApiKey}}"
+            - name: "Content-Type"
+              value: "application/json"
+        sendBody: true
+        bodyParameters:
+          parameters:
+            - name: "workflow"
+              value: "={{$json.workflow}}"
+        options:
+          timeout: 30000
+          batching:
+            batch:
+              batchSize: 1
+          response:
+            response:
+              fullResponse: true
+          retry:
+            maxTries: 3
+            waitBetweenTries: 5000
+      credentials:
+        name: "n8n_api"
+        type: "httpHeaderAuth"
+      inputs:
+        - source: "documentation_generator"
+      outputs:
+        main:
+          - type: "object"
+            properties:
+              workflowId: "string"
+              success: "boolean"
+              url: "string"
+              error: "string"
+    
+    # 6.2 GitHub Push
+    - id: "github_pusher"
+      type: "n8n-nodes-base.github"
+      typeVersion: 1
+      position: [450, 2200]
+      parameters:
+        operation: "create"
+        owner: "{{$credentials.githubOwner}}"
+        repository: "workflows"
+        filePath: "multi-agent-builder/{{$json.workflow.name}}/workflow.json"
+        fileContent: "={{JSON.stringify($json.workflow, null, 2)}}"
+        commitMessage: "feat: generated workflow {{$json.workflow.name}}"
+        additionalParameters:
+          branch: "main"
+      credentials:
+        name: "github_api"
+        type: "githubApi"
+      inputs:
+        - source: "n8n_deployer"
+      outputs:
+        main:
+          - type: "object"
+            properties:
+              commit: "string"
+              url: "string"
+    
+    # 6.3 Success Reporter
+    - id: "success_reporter"
+      type: "n8n-nodes-base.respondToWebhook"
+      typeVersion: 1.1
+      position: [650, 2200]
+      parameters:
+        respondWith: "json"
+        responseBody:
+          response:
+            success: true
+            workflowId: "={{$json.workflowId}}"
+            githubUrl: "={{$json.url}}"
+            documentation: "={{$json.documents}}"
+            message: "Workflow successfully generated and deployed"
+        responseHeaders:
+          values:
+            - name: "Content-Type"
+              value: "application/json"
+        options:
+          responseCode: 200
+      inputs:
+        - source: "github_pusher"
+      outputs: []
+
+# Complete Connection Matrix
+connections:
+  # Phase 1 connections
+  - source: "form_trigger"
+    target: "merge_triggers"
+    port: "main"
+  - source: "webhook_trigger"
+    target: "merge_triggers"
+    port: "main"
+  - source: "merge_triggers"
+    target: "wrd_parser"
+    port: "main"
+    
+  # Phase 2 connections
+  - source: "wrd_parser"
+    target: "mermaid_generator"
+    port: "main"
+  - source: "mermaid_generator"
+    target: "telegram_sender"
+    port: "main"
+  - source: "telegram_sender"
+    target: "approval_wait"
+    port: "main"
+    
+  # Phase 3 connections (Parallel)
+  - source: "approval_wait"
+    target: "agent_spawner"
+    port: "main"
+  - source: "agent_spawner"
+    target: "business_intelligence_agent"
+    port: "output_0"
+  - source: "agent_spawner"
+    target: "technical_intelligence_agent"
+    port: "output_1"
+  - source: "agent_spawner"
+    target: "validation_intelligence_agent"
+    port: "output_2"
+  - source: "agent_spawner"
+    target: "documentation_intelligence_agent"
+    port: "output_3"
+    
+  # Phase 4 connections
+  - source: "business_intelligence_agent"
+    target: "merge_intelligence"
+    port: "main"
+  - source: "technical_intelligence_agent"
+    target: "merge_intelligence"
+    port: "main"
+  - source: "validation_intelligence_agent"
+    target: "merge_intelligence"
+    port: "main"
+  - source: "documentation_intelligence_agent"
+    target: "merge_intelligence"
+    port: "main"
+  - source: "merge_intelligence"
+    target: "conflict_resolver"
+    port: "main"
+  - source: "conflict_resolver"
+    target: "workflow_assembler"
+    port: "main"
+    
+  # Phase 5 connections
+  - source: "workflow_assembler"
+    target: "documentation_generator"
+    port: "main"
+    
+  # Phase 6 connections
+  - source: "documentation_generator"
+    target: "n8n_deployer"
+    port: "main"
+  - source: "n8n_deployer"
+    target: "github_pusher"
+    port: "main"
+  - source: "github_pusher"
+    target: "success_reporter"
+    port: "main"
+
+# Interface Contracts
+interfaces:
+  phase_1_output:
+    format: "object"
+    required:
+      - projectName: "string"
+      - objectives: "array"
+      - constraints: "array"
+      - complexity: "string"
+      - parsedWRD: "object"
+      
+  phase_2_output:
+    format: "object"
+    required:
+      - diagram: "string"
+      - approval: "boolean"
+      - feedback: "string"
+      - stakeholderNotes: "string"
+      
+  phase_3_outputs:
+    business:
+      format: "object"
+      confidence: "number"
+      data:
+        - marketAnalysis: "array"
+        - roiProjection: "number"
+        - competitiveAdvantage: "string"
+    technical:
+      format: "object"
+      confidence: "number"
+      data:
+        - selectedNodes: "array"
+        - configurations: "object"
+        - connections: "array"
+    validation:
+      format: "object"
+      confidence: "number"
+      data:
+        - validationReport: "object"
+        - securityScore: "number"
+        - issues: "array"
+    documentation:
+      format: "object"
+      confidence: "number"
+      data:
+        - documents: "object"
+        - languages: "array"
+        - completeness: "number"
+        
+  phase_4_output:
+    format: "object"
+    required:
+      - workflow: "object"
+      - confidence: "number"
+      - consensusLevel: "string"
+      
+  phase_5_output:
+    format: "object"
+    required:
+      - documents: "object"
+      - fileCount: "number"
+      - formats: "array"
+      
+  phase_6_output:
+    format: "object"
+    required:
+      - workflowId: "string"
+      - deploymentUrl: "string"
+      - githubUrl: "string"
+      - success: "boolean"
+
+# Error Handling
+error_handling:
+  global:
+    on_error: "continue_with_error_branch"
+    save_error_data: true
+    max_retries: 3
+    
+  phase_specific:
+    wrd_parser:
+      on_error: "stop"
+      message: "Failed to parse requirements"
+      
+    telegram_sender:
+      on_error: "retry"
+      max_retries: 3
+      wait: 5000
+      
+    agent_intelligence:
+      on_error: "fallback"
+      fallback_action: "use_default_configuration"
+      
+    n8n_deployer:
+      on_error: "save_locally"
+      local_path: "/workflows/failed/"
+      
+# Parallel Configuration
+parallel_config:
+  strategy: "dynamic"
+  min_agents: 4
+  max_agents: "unlimited"
+  spawn_criteria:
+    simple: 3
+    medium: 5
+    complex: 8
+    enterprise: "unlimited"
+  
+  synchronization:
+    checkpoints:
+      - "after_requirements"
+      - "after_approval"
+      - "before_convergence"
+      - "before_deployment"
+    timeout: 300000  # 5 minutes per agent
+    
+# Success Metrics
+success_metrics:
+  generation_time:
+    simple: 30
+    medium: 120
+    complex: 300
+    enterprise: 600
+  accuracy: 0.98
+  deployment_success: 0.95
+  documentation_completeness: 1.0
+  stakeholder_approval: 0.9

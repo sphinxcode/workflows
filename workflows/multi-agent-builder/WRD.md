@@ -35,11 +35,12 @@ Create an autonomous workflow factory that transforms business requirements into
    - **Scalability Intelligence Track**: Load balancing, parallel processing, queue management
 
 3. **n8n-MCP Integration Architecture**
-   - n8n-nodes-mcp as AI Agent subtool
+   - n8n-nodes-mcp as AI Agent subtool (NOT REST API)
    - HTTP URL pointing to czlonkowski's n8n-MCP server
-   - Real-time node discovery and documentation
-   - Pattern library access and template retrieval
-   - Comprehensive property mapping
+   - Real-time node discovery with COMPLETE PARAMETERS
+   - Pattern library access with full configuration schemas
+   - 535+ nodes with 99% property coverage
+   - Schema-first approach: Every parameter pre-defined for parallel execution
 
 4. **Documentation Generation Suite**
    - Working JSON workflow code
